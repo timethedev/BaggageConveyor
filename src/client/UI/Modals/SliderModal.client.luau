@@ -22,7 +22,7 @@ local SliderButton: GuiButton = Slider.Button
 local SpawnRate: TextLabel = Slider.SpawnRate
 
 local SLIDER_MIN = 0.1 -- far left
-local SLIDER_MAX = 3 -- far right
+local SLIDER_MAX = 10 -- far right
 local SLIDER_STEP = 0.1 -- snapping step (1 = whole numbers)
 
 -- Functions
@@ -71,7 +71,7 @@ scope:Hydrate(SpawnRate)({
 	Text = scope:Tween(
 		scope:Computed(function(use)
 			Client.Conveyor.SetSpawnrate.Fire({ Spawnrate = use(SnappedValue) })
-			return tostring(use(SnappedValue)) .. "b/s"
+			return math.floor(use(SnappedValue) * 10) / 10 .. "b/s"
 		end),
 		TweenInfo.new(0.1)
 	),
@@ -93,5 +93,14 @@ end)
 UserInputService.InputChanged:Connect(function(input)
 	if isDragging then
 		MouseX:set(input.Position.X)
+	end
+end)
+
+Client.Conveyor.SetOwnership.On(function(data)
+	ModalManager.CloseAllModals()
+	if data.Player == LocalPlayer then
+		ToggleButton.Visible = true
+	else
+		ToggleButton.Visible = false
 	end
 end)
