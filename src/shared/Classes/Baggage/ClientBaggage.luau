@@ -2,7 +2,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 -- Dependencies
+local Signal = require(ReplicatedStorage.Packages.Signal)
+local Baggage = require(script.Parent)
 local Register = require(ReplicatedStorage.Shared.Modules.Register)
+local Client = require(ReplicatedStorage.Shared.Network.Client)
 
 -- Imported Types
 local ClientBaggageType = require(ReplicatedStorage.Shared.Types.BaggageType.ClientBaggageType)
@@ -17,11 +20,11 @@ local DEFAULT_BAGGAGE_PREFAB = ReplicatedStorage.Assets.Baggage
 
 -- Class Definition
 local ClientBaggage = {} :: Class
-ClientBaggage.__index = ClientBaggage
+ClientBaggage.__index = setmetatable(ClientBaggage, Baggage)
 
 -- Constructor
 function ClientBaggage.new(data: Data)
-	local self = setmetatable({}, ClientBaggage)
+	local self = setmetatable(Baggage.new(data) :: Entity, ClientBaggage)
 	self.Data = data
 	self.Data.Material = Enum.Material:FromName(self.Data.Material)
 	return self:__init()
@@ -36,6 +39,7 @@ function ClientBaggage:__init()
 end
 
 function ClientBaggage:__setupData()
+	self.Clicked = Signal.Good.new()
 	self.UUID = self.Data.UUID
 	Register.RegisterData(self)
 end
@@ -45,10 +49,23 @@ function ClientBaggage:__setupModel()
 	self.Model.Parent = workspace
 	self:SetColor(self.Data.Color)
 	self:SetMaterial(self.Data.Material)
+	self._trove:Add(self.Model)
+
+	self._clickDetector = Instance.new("ClickDetector")
+	self._clickDetector.Parent = self.Model
+	self._trove:Add(self._clickDetector.MouseClick:Connect(function()
+		self.Clicked:Fire(self)
+		Client.Baggage.Clicked.Fire(self)
+	end))
 end
 
 function ClientBaggage:__setupConnections()
 	self:Spawn(self.Data.Start)
+	self._trove:Add(Client.Baggage.Destroy.On(function(data)
+		if data.UUID == self.UUID then
+			self:Destroy()
+		end
+	end))
 end
 
 -- Public methods
@@ -82,12 +99,16 @@ function ClientBaggage:Spawn()
 end
 
 function ClientBaggage:Destroy()
+	self.Model.PrimaryPart.Anchored = true
+	self.Model.PrimaryPart.CanCollide = false
+	self._clickDetector:Destroy()
 	local destroyTween = TweenService:Create(self.Model.PrimaryPart, TweenInfo.new(1), {
-		CFrame = CFrame.new(self.Data.Finish) * CFrame.Angles(0, math.rad(math.random() * 360), 0),
+		CFrame = CFrame.new(self.Model:GetPivot().Position + Vector3.yAxis * 4)
+			* CFrame.Angles(0, math.rad(math.random() * 360), 0),
 	})
 	destroyTween:Play()
 	destroyTween.Completed:Once(function()
-		self.Model:Destroy()
+		self._trove:Destroy()
 		Register.UnregisterData(self)
 	end)
 end

@@ -1,4 +1,8 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Signal = require(ReplicatedStorage.Packages.Signal)
 local BaggageType = require(script.Parent)
+
+type Signal = typeof(Signal.Good.new())
 
 export type Data = {
 	UUID: string,
@@ -15,6 +19,8 @@ export type Entity = {
 	SetMaterial: (self: Entity, material: Enum.Material?) -> (),
 	Spawn: (self: Entity) -> (),
 	Destroy: (self: Entity) -> (),
+	Clicked: Signal,
+	_clickDetector: ClickDetector,
 	__init: (self: Entity) -> Entity,
 	__setupData: (self: Entity) -> (),
 	__setupModel: (self: Entity) -> (),

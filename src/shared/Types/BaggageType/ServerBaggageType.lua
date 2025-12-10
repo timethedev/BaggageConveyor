@@ -17,6 +17,7 @@ export type Entity = {
 	Color: Color3,
 	Material: Enum.Material,
 	Speed: number,
+	Clicked: Signal,
 	Destroyed: Signal,
 	__init: (self: Entity) -> Entity,
 	__setupData: (self: Entity) -> (),

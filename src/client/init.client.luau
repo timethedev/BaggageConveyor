@@ -1,8 +1,14 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ClientBaggage = require(ReplicatedStorage.Shared.Classes.Baggage.ClientBaggage)
-local Client = require(ReplicatedStorage.Shared.Network.Client)
+local StarterPlayer = game:GetService("StarterPlayer")
 
-Client.Baggage.Replicate.On(function(data)
-	print(data)
-	ClientBaggage.new(data)
-end)
+-- Dependencies
+local ModuleLoader = require(ReplicatedStorage.Shared.Modules.ModuleLoader)
+
+ModuleLoader.ChangeSettings({
+	FOLDER_SEARCH_DEPTH = 2,
+	YIELD_THRESHOLD = 10,
+	VERBOSE_LOADING = false,
+	WAIT_FOR_SERVER = true,
+})
+
+ModuleLoader.Start(StarterPlayer.StarterPlayerScripts.Client.Controllers)

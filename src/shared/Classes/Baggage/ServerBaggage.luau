@@ -2,6 +2,7 @@ local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Dependencies
+local Signal = require(ReplicatedStorage.Packages.Signal)
 local Register = require(ReplicatedStorage.Shared.Modules.Register)
 local Server = require(ReplicatedStorage.Shared.Network.Server)
 
@@ -17,7 +18,7 @@ export type Class = ServerBaggageType.Class
 
 -- Class Definition
 local ServerBaggage = {} :: Class
-ServerBaggage.__index = ServerBaggage
+ServerBaggage.__index = setmetatable(ServerBaggage, Baggage)
 
 -- Constructor
 function ServerBaggage.new(data: Data)
@@ -39,14 +40,21 @@ function ServerBaggage:__init()
 end
 
 function ServerBaggage:__setupData()
+	self.Clicked = Signal.Good.new()
 	self.UUID = HttpService:GenerateGUID(false)
 	Register.RegisterData(self)
 end
 
 function ServerBaggage:__setupConnections()
-	local duration = (self.Data.Finish - self.Data.Start).Magnitude / self.Speed
+	local duration = (self.Data.Finish - self.Data.Start).Magnitude / (self.Speed * 0.9)
 	self._trove:Add(task.delay(duration, function()
 		self:Destroy()
+	end))
+
+	self._trove:Add(Server.Baggage.Clicked.On(function(player, data)
+		if data.UUID == self.UUID then
+			self.Clicked:Fire(player)
+		end
 	end))
 end
 

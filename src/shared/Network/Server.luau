@@ -158,10 +158,23 @@ local Queue: any = {
 
 local SerdesEvent = "?"
 local SerdesThread: thread?
+Events.Reliable[0] = {}
+Queue.Reliable[0] = table.create(256)
+Events.Reliable[4] = {}
+Queue.Reliable[4] = table.create(256)
+local function Baggage_ReadEVENT_Clicked(): ({ UUID: string })
+	-- Read BLOCK: 2 bytes
+	local BLOCK_START = Read(2)
+	local Value = {} :: any
+	local Length = buffer.readu16(RecieveBuffer, BLOCK_START + 0)
+	Value.UUID = buffer.readstring(RecieveBuffer, Read(Length), Length)
+	return Value
+end
+
 local function Baggage_WriteEVENT_Destroy(Value: { UUID: string }): ()
 	-- Allocate BLOCK: 3 bytes
 	local BLOCK_START = Allocate(3)
-	buffer.writeu8(SendBuffer, BLOCK_START + 0, 0)
+	buffer.writeu8(SendBuffer, BLOCK_START + 0, 1)
 	local Length = #Value.UUID
 	buffer.writeu16(SendBuffer, BLOCK_START + 1, Length)
 	Allocate(Length)
@@ -171,7 +184,7 @@ end
 local function Baggage_WriteEVENT_Replicate(Value: { UUID: string, Color: Color3, Material: string, Start: Vector3, Finish: Vector3 }): ()
 	-- Allocate BLOCK: 32 bytes
 	local BLOCK_START = Allocate(32)
-	buffer.writeu8(SendBuffer, BLOCK_START + 0, 1)
+	buffer.writeu8(SendBuffer, BLOCK_START + 0, 2)
 	local Length = #Value.UUID
 	buffer.writeu16(SendBuffer, BLOCK_START + 1, Length)
 	Allocate(Length)
@@ -194,10 +207,28 @@ local function Baggage_WriteEVENT_Replicate(Value: { UUID: string, Color: Color3
 	buffer.writef32(SendBuffer, BLOCK_START + 28, Vector.Z)
 end
 
+local function Conveyor_WriteEVENT_SetOwnership(Value: { Player: Player }): ()
+	-- Allocate BLOCK: 1 bytes
+	local BLOCK_START = Allocate(1)
+	buffer.writeu8(SendBuffer, BLOCK_START + 0, 3)
+	table.insert(SendInstances, Value.Player or Null)
+end
+
+local function Conveyor_ReadEVENT_SetSpawnrate(): ({ Spawnrate: number })
+	-- Read BLOCK: 4 bytes
+	local BLOCK_START = Read(4)
+	local Value = {} :: any
+	Value.Spawnrate = buffer.readu32(RecieveBuffer, BLOCK_START + 0)
+	return Value
+end
+
 if not RunService:IsRunning() then
 	local NOOP = function() end
 	local Returns = table.freeze({
 	Baggage = {
+		Clicked = {
+			On = NOOP
+		},
 		Destroy = {
 			Fire = NOOP,
 			FireAll = NOOP,
@@ -209,6 +240,17 @@ if not RunService:IsRunning() then
 			FireAll = NOOP,
 			FireList = NOOP,
 			FireExcept = NOOP
+		},
+	},
+	Conveyor = {
+		SetOwnership = {
+			Fire = NOOP,
+			FireAll = NOOP,
+			FireList = NOOP,
+			FireExcept = NOOP
+		},
+		SetSpawnrate = {
+			On = NOOP
 		},
 	},
 	})
@@ -273,6 +315,31 @@ Reliable.OnServerEvent:Connect(function(Player: Player, Buffer: buffer, Instance
 		-- Read BLOCK: 1 bytes
 		local BLOCK_START = Read(1)
 		local Index = buffer.readu8(RecieveBuffer, BLOCK_START + 0)
+		if Index == 0 then
+			local Value: { UUID: string } = Baggage_ReadEVENT_Clicked()
+			if #Events.Reliable[0] > 0 then
+				for _, Listener in Events.Reliable[0] do
+					task.spawn(Listener, Player, Value)
+				end
+			else
+				if #Queue.Reliable[0] > 256 then
+					warn("[Blink]: Event queue of \"Clicked\" exceeded 256, did you forget to implement a listener?")
+				end
+				table.insert(Queue.Reliable[0], {Player, Value} :: {any})
+			end
+		elseif Index == 4 then
+			local Value: { Spawnrate: number } = Conveyor_ReadEVENT_SetSpawnrate()
+			if #Events.Reliable[4] > 0 then
+				for _, Listener in Events.Reliable[4] do
+					task.spawn(Listener, Player, Value)
+				end
+			else
+				if #Queue.Reliable[4] > 256 then
+					warn("[Blink]: Event queue of \"SetSpawnrate\" exceeded 256, did you forget to implement a listener?")
+				end
+				table.insert(Queue.Reliable[4], {Player, Value} :: {any})
+			end
+		end
 	end
 end)
 Unreliable.OnServerEvent:Connect(function(Player: Player, Buffer: buffer, Instances: {Instance})
@@ -298,6 +365,21 @@ local Returns = table.freeze({
 	StepReplication = StepReplication,
 
 	Baggage = {
+		Clicked = {
+			On = function(Listener: (Player: Player, Value: { UUID: string }) -> ()): () -> ()
+				table.insert(Events.Reliable[0], Listener)
+				for Index, Arguments in Queue.Reliable[0] do
+					task.spawn(Listener, table.unpack(Arguments))
+				end
+				Queue.Reliable[0] = {}
+				return function (): ()
+					local Index = table.find(Events.Reliable[0], Listener)
+					if Index ~= nil then
+						table.remove(Events.Reliable[0], Index)
+					end
+				end
+			end
+		},
 		Destroy = {
 			Fire = function(Player: Player, Value: { UUID: string }): ()
 				Load(PlayersMap[Player])
@@ -389,6 +471,69 @@ local Returns = table.freeze({
 					PlayersMap[Player] = Save()
 				end
 			end,
+		},
+	},
+	Conveyor = {
+		SetOwnership = {
+			Fire = function(Player: Player, Value: { Player: Player }): ()
+				Load(PlayersMap[Player])
+				Conveyor_WriteEVENT_SetOwnership(Value)
+				PlayersMap[Player] = Save()
+			end,
+			FireAll = function(Value: { Player: Player }): ()
+				Load()
+				Conveyor_WriteEVENT_SetOwnership(Value)
+				local Buffer, Size, Instances = SendBuffer, SendCursor, SendInstances
+				for _, Player in Players:GetPlayers() do
+					Load(PlayersMap[Player])
+					local Position = Allocate(Size)
+					buffer.copy(SendBuffer, Position, Buffer, 0, Size)
+					table.move(Instances, 1, #Instances, #SendInstances + 1, SendInstances)
+					PlayersMap[Player] = Save()
+				end
+			end,
+			FireList = function(List: {Player}, Value: { Player: Player }): ()
+				Load()
+				Conveyor_WriteEVENT_SetOwnership(Value)
+				local Buffer, Size, Instances = SendBuffer, SendCursor, SendInstances
+				for _, Player in List do
+					Load(PlayersMap[Player])
+					local Position = Allocate(Size)
+					buffer.copy(SendBuffer, Position, Buffer, 0, Size)
+					table.move(Instances, 1, #Instances, #SendInstances + 1, SendInstances)
+					PlayersMap[Player] = Save()
+				end
+			end,
+			FireExcept = function(Except: Player, Value: { Player: Player }): ()
+				Load()
+				Conveyor_WriteEVENT_SetOwnership(Value)
+				local Buffer, Size, Instances = SendBuffer, SendCursor, SendInstances
+				for _, Player in Players:GetPlayers() do
+					if Player == Except then
+						continue
+					end
+					Load(PlayersMap[Player])
+					local Position = Allocate(Size)
+					buffer.copy(SendBuffer, Position, Buffer, 0, Size)
+					table.move(Instances, 1, #Instances, #SendInstances + 1, SendInstances)
+					PlayersMap[Player] = Save()
+				end
+			end,
+		},
+		SetSpawnrate = {
+			On = function(Listener: (Player: Player, Value: { Spawnrate: number }) -> ()): () -> ()
+				table.insert(Events.Reliable[4], Listener)
+				for Index, Arguments in Queue.Reliable[4] do
+					task.spawn(Listener, table.unpack(Arguments))
+				end
+				Queue.Reliable[4] = {}
+				return function (): ()
+					local Index = table.find(Events.Reliable[4], Listener)
+					if Index ~= nil then
+						table.remove(Events.Reliable[4], Index)
+					end
+				end
+			end
 		},
 	},
 })

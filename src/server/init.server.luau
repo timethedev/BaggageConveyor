@@ -1,11 +1,13 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Dependencies
-local Conveyor = require(ReplicatedStorage.Shared.Classes.Conveyor)
+local ModuleLoader = require(ReplicatedStorage.Shared.Modules.ModuleLoader)
 
-local conveyorModel = workspace.Conveyor
-Conveyor.new({
-	Belt = conveyorModel.Belt,
-	Start = conveyorModel.Belt.Start,
-	Finish = conveyorModel.Belt.Finish,
+ModuleLoader.ChangeSettings({
+	FOLDER_SEARCH_DEPTH = 5,
+	YIELD_THRESHOLD = 10,
+	VERBOSE_LOADING = false,
+	WAIT_FOR_SERVER = true,
 })
+
+ModuleLoader.Start(script.Services)

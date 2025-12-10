@@ -3,6 +3,15 @@ option ClientOutput = "./src/shared/Network/Client.luau"
 option ServerOutput = "./src/shared/Network/Server.luau"
 
 scope Baggage {
+    event Clicked {
+        from: Client,
+        type: Reliable,
+        call: ManyAsync,
+        data: struct {
+            UUID: string,
+        }
+    }
+
     event Destroy {
         from: Server,
         type: Reliable,
@@ -22,6 +31,26 @@ scope Baggage {
             Material: string,
             Start: vector,
             Finish: vector,
+        }
+    }
+}
+
+scope Conveyor {
+    event SetOwnership {
+        from: Server,
+        type: Reliable,
+        call: ManyAsync,
+        data: struct {
+            Player: Instance(Player),
+        }
+    }
+
+    event SetSpawnrate {
+        from: Client,
+        type: Reliable,
+        call: ManyAsync,
+        data: struct {
+            Spawnrate: u32,
         }
     }
 }
