@@ -59,7 +59,7 @@ function Conveyor:__setupConnections()
 			baggage.Clicked:Connect(function()
 				print("Baggage ID:", baggage.UUID)
 			end)
-			task.wait(1 / math.clamp(self.SpawnRate, 1, 10))
+			task.wait(1 / math.clamp(self.SpawnRate, 0.1, 10))
 		end
 	end))
 
