@@ -1,3 +1,27 @@
 option SyncValidation = true
 option ClientOutput = "./src/shared/Network/Client.luau"
 option ServerOutput = "./src/shared/Network/Server.luau"
+
+scope Baggage {
+    event Destroy {
+        from: Server,
+        type: Reliable,
+        call: ManyAsync,
+        data: struct {
+            UUID: string,
+        }
+    }
+
+    event Replicate {
+        from: Server,
+        type: Reliable,
+        call: ManyAsync,
+        data: struct {
+            UUID: string,
+            Color: Color3,
+            Material: string,
+            Start: vector,
+            Finish: vector,
+        }
+    }
+}
