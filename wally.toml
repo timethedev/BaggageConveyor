@@ -1,0 +1,12 @@
+[package]
+name = "shake/project"
+version = "0.1.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+
+[dependencies]
+Sift = "sah31m/sift@0.0.9"
+Fusion = "realdeedy/fusion@0.3.0"
+Signal = "si-senortn/signal@0.1.0"
+TableUtil = "sleitnick/table-util@1.2.1"
+Trove = "sleitnick/trove@1.5.1"

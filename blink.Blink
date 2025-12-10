@@ -1,0 +1,3 @@
+option SyncValidation = true
+option ClientOutput = "./src/shared/Network/Client.luau"
+option ServerOutput = "./src/shared/Network/Server.luau"
