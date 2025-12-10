@@ -26,7 +26,7 @@ ClientBaggage.__index = setmetatable(ClientBaggage, Baggage)
 function ClientBaggage.new(data: Data)
 	local self = setmetatable(Baggage.new(data) :: Entity, ClientBaggage)
 	self.Data = data
-	self.Data.Material = Enum.Material:FromName(self.Data.Material)
+	self.Data.Material = Enum.Material[self.Data.Material]
 	return self:__init()
 end
 

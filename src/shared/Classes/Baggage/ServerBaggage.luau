@@ -24,8 +24,10 @@ ServerBaggage.__index = setmetatable(ServerBaggage, Baggage)
 function ServerBaggage.new(data: Data)
 	local self = setmetatable(Baggage.new(data) :: Entity, ServerBaggage)
 	self.Data = data
+
+	local materials = Enum.Material:GetEnumItems()
+	self.Material = data.Material or materials[math.random(1, #materials)]
 	self.Color = data.Color or Color3.new(math.random(), math.random(), math.random())
-	self.Material = data.Material or Enum.Material.Plastic
 	self.Speed = data.Speed or 1
 
 	return self:__init()

@@ -30,6 +30,26 @@ local function SnapToStep(value, step)
 	return math.floor(value / step + 0.5) * step
 end
 
+local function GetMouseFromValue(value)
+	-- Clamp
+	value = math.clamp(value, SLIDER_MIN, SLIDER_MAX)
+
+	-- Snap
+	value = SnapToStep(value, SLIDER_STEP)
+
+	-- Convert value → percentage
+	local percent = (value - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN)
+
+	-- Convert percentage → fake MouseX
+	-- MouseX = sliderOrigin + (sliderWidth * percent)
+	local sliderAbsPos = Slider.AbsolutePosition.X
+	local sliderAbsSize = Slider.AbsoluteSize.X
+	local fakeMouseX = sliderAbsPos + sliderAbsSize * percent
+
+	-- Update fusion variable
+	return fakeMouseX
+end
+
 -- Modal Setup
 ModalManager.RegisterModal("Slider", SpawnrateGui, {
 	CloseButton = CloseButton,
@@ -41,7 +61,7 @@ end)
 
 -- Setup Slider Logic
 local isDragging = false
-local MouseX = scope:Value(0)
+local MouseX = scope:Value(GetMouseFromValue(1))
 local SnappedValue = scope:Computed(function(use)
 	local sliderAbsPos = Slider.AbsolutePosition.X
 	local sliderAbsSize = Slider.AbsoluteSize.X
